@@ -1,0 +1,126 @@
+# =====================================================================
+#  Dirección de Planeación · UAdeC — Configuración Apache (.htaccess)
+#  Seguridad, rendimiento, redirecciones y página 404.
+#  Requiere: mod_headers, mod_rewrite, mod_deflate, mod_expires
+#  (todos vienen activos en la mayoría de hostings Apache).
+# =====================================================================
+
+# ---------- Básicos ----------
+Options -Indexes -MultiViews
+ServerSignature Off
+AddDefaultCharset utf-8
+DirectoryIndex index.html
+
+ErrorDocument 403 /404.html
+ErrorDocument 404 /404.html
+
+# ---------- Tipos MIME modernos ----------
+<IfModule mod_mime.c>
+  AddType image/webp .webp
+  AddType font/woff2 .woff2
+  AddType application/manifest+json .webmanifest
+  AddType image/svg+xml .svg
+  AddCharset utf-8 .html .css .js .xml .txt .webmanifest .svg
+</IfModule>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # ---------- Forzar HTTPS ----------
+  # Descomenta las 2 líneas siguientes SOLO cuando el servidor tenga certificado SSL.
+  # RewriteCond %{HTTPS} !=on
+  # RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # ---------- Bloquear métodos HTTP innecesarios ----------
+  RewriteCond %{REQUEST_METHOD} !^(GET|HEAD)$ [NC]
+  RewriteRule ^ - [F]
+
+  # ---------- Bloquear archivos ocultos y sensibles ----------
+  RewriteRule (^|/)\.(?!well-known/) - [F]
+  RewriteRule \.(bak|old|orig|save|swp|sql|log|ini|env|sh|py|psd|zip|tar|gz|rar|7z|md)$ - [F,NC]
+
+  # ---------- Este sitio NO usa PHP: bloquear cualquier .php ----------
+  # (evita que un archivo malicioso subido o viejo, como el PHPMailer anterior, se ejecute)
+  RewriteRule \.(php[0-9]?|phtml|phar|cgi|pl|asp|aspx|jsp)$ - [F,NC]
+
+  # ---------- Redirecciones 301 desde las URLs antiguas ----------
+  RewriteRule ^somosuadec\.html$ /somos-uadec.html [R=301,L,NC]
+  RewriteRule ^statics\.html$ /sie.html [R=301,L,NC]
+  RewriteRule ^docs\.html$ /documentos.html [R=301,L,NC]
+  RewriteRule ^informe\.html$ /documentos.html [R=301,L,NC]
+  RewriteRule ^eje\.html$ /documentos.html [R=301,L,NC]
+  RewriteRule ^alumno\.html$ /indicadores.html [R=301,L,NC]
+  RewriteRule ^docente\.html$ /indicadores.html [R=301,L,NC]
+  RewriteRule ^auditoria\.html$ /auditorias.html [R=301,L,NC]
+  RewriteRule ^(numeralia16|numeraliacp)\.html$ /numeralia.html [R=301,L,NC]
+  RewriteRule ^contacto_msj\.html$ /contacto.html [R=301,L,NC]
+  RewriteRule ^contacto/.*$ /contacto.html [R=301,L,NC]
+  RewriteRule ^pdf/PrimerInformeRector2013-2014\.pdf$ /docs/primerinformerector2013-2014.pdf [R=301,L,NC]
+  RewriteRule ^pdf/SegundoInformeRector2014-2015\.pdf$ /docs/segundoinformerector2014-2015.pdf [R=301,L,NC]
+  RewriteRule ^pdf/(.+\.pdf)$ /docs/$1 [R=301,L,NC]
+</IfModule>
+
+# ---------- Encabezados de seguridad ----------
+<IfModule mod_headers.c>
+  Header always unset X-Powered-By
+  Header unset X-Powered-By
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "DENY"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Resource-Policy "same-origin"
+  Header always set X-Permitted-Cross-Domain-Policies "none"
+  # Política de seguridad de contenido: solo recursos del propio sitio.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' mailto:; frame-ancestors 'none'; manifest-src 'self'"
+  # Con HTTPS activo, obliga a cargar todo por conexión segura.
+  Header always add Content-Security-Policy "upgrade-insecure-requests" "expr=%{HTTPS} == 'on'"
+  # HSTS: solo se envía cuando la conexión ya es HTTPS.
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTPS} == 'on'"
+
+  # ---------- Caché ----------
+  # HTML: siempre revalidar (para ver cambios al instante)
+  <FilesMatch "\.(html)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  # CSS/JS (llevan ?v=versión), fuentes e imágenes: 1 año
+  <FilesMatch "\.(css|js|woff2|webp|png|jpg|jpeg|svg|ico)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.(pdf)$">
+    Header set Cache-Control "public, max-age=2592000"
+    Header set X-Robots-Tag "noarchive"
+  </FilesMatch>
+  # Las fuentes se pueden servir a otras páginas del propio dominio
+  <FilesMatch "\.(woff2)$">
+    Header set Cross-Origin-Resource-Policy "same-site"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType application/pdf "access plus 1 month"
+</IfModule>
+
+# ---------- Compresión GZIP ----------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml application/xml application/javascript text/javascript application/json application/manifest+json image/svg+xml image/x-icon
+</IfModule>
+# Brotli si el servidor lo tiene (Apache 2.4.26+)
+<IfModule mod_brotli.c>
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/css text/plain text/xml application/xml application/javascript text/javascript application/json image/svg+xml
+</IfModule>
+
+# ---------- Limitar tamaño de peticiones (mitiga abusos) ----------
+LimitRequestBody 102400

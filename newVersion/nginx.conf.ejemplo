@@ -1,0 +1,45 @@
+# Configuración equivalente para Nginx (solo si el servidor usa Nginx).
+# Copiar dentro del bloque server { ... } del sitio.
+
+root /var/www/planeacion;      # carpeta donde se subió el contenido de sitio/
+index index.html;
+error_page 403 404 /404.html;
+server_tokens off;
+client_max_body_size 100k;
+autoindex off;
+
+if ($request_method !~ ^(GET|HEAD)$) { return 405; }
+
+# Seguridad
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), browsing-topics=()" always;
+add_header Cross-Origin-Opener-Policy "same-origin" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' mailto:; frame-ancestors 'none'; manifest-src 'self'" always;
+# Con HTTPS activo:
+# add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+# Bloqueos
+location ~ /\.(?!well-known/) { deny all; }
+location ~* \.(php\d?|phtml|phar|cgi|pl|asp|aspx|jsp|bak|old|sql|log|ini|env|sh|py|md)$ { deny all; }
+
+# Compresión
+gzip on;
+gzip_types text/css application/javascript text/javascript application/json image/svg+xml application/manifest+json text/xml application/xml;
+
+# Caché
+location ~* \.(css|js|woff2|webp|png|jpg|svg|ico)$ { expires 1y; add_header Cache-Control "public, immutable"; }
+location ~* \.html$ { add_header Cache-Control "no-cache, must-revalidate"; }
+
+# Redirecciones de URLs antiguas
+location = /somosuadec.html { return 301 /somos-uadec.html; }
+location = /statics.html    { return 301 /sie.html; }
+location ~* ^/(docs|informe|eje)\.html$ { return 301 /documentos.html; }
+location ~* ^/(alumno|docente)\.html$   { return 301 /indicadores.html; }
+location = /auditoria.html  { return 301 /auditorias.html; }
+location ~* ^/(numeralia16|numeraliacp)\.html$ { return 301 /numeralia.html; }
+location ~* ^/(contacto_msj\.html|contacto/) { return 301 /contacto.html; }
+location = /pdf/PrimerInformeRector2013-2014.pdf { return 301 /docs/primerinformerector2013-2014.pdf; }
+location = /pdf/SegundoInformeRector2014-2015.pdf { return 301 /docs/segundoinformerector2014-2015.pdf; }
+location ~* ^/pdf/(.+)$ { return 301 /docs/$1; }
